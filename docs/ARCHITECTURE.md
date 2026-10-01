@@ -18,13 +18,31 @@ Single-table design, partitioned per user. `userId` comes from the Cognito `sub`
 
 ## Payroll rules are config, not code
 
-`CONFIG#payroll` holds the numbers that change yearly / by province (CPP rate, EI rate,
-federal/provincial tax brackets, overtime thresholds, statutory holiday formula
-inputs). `backend/src/lib/payroll.ts` reads this config rather than hardcoding rates,
-so updating a bracket doesn't require a redeploy of the calculation logic itself —
-just a data update. **The actual bracket numbers in `payroll.ts` right now are
-illustrative placeholders and must be verified against current CRA/BC figures (or a
-compliance library) before this is used for anything real.**
+`CONFIG#payroll` is meant to eventually hold these numbers per-user so updating a
+bracket doesn't require a redeploy. For now, `backend/src/lib/payroll.ts` uses a
+`DEFAULT_PAYROLL_CONFIG` with **real 2026 figures**, sourced and cited in that file's
+header comment:
+- CPP (rate, YMPE, CPP2, basic exemption) and EI (rate, max insurable) — from CRA's
+  2026 contribution-rate announcements.
+- Federal tax brackets and Basic Personal Amount — from CRA's 2026 bracket
+  announcement (lowest rate cut to 14% for the full year).
+- BC tax brackets — the first two are confirmed from gov.bc.ca and the BC 2026/27
+  budget (which raised the lowest rate from 5.06% to 5.60%). **Brackets above
+  $100,728 are an unverified placeholder** — fine for typical part-time earnings,
+  but must be fixed before this is trusted for anyone earning into that range.
+- Deductions are computed by annualizing each pay period's gross (period ×
+  periodsPerYear) and applying real marginal brackets — this is the standard
+  payroll "periodic method," but there's still no year-to-date tracking across
+  periods, so someone who stops working partway through the year will look
+  slightly over-deducted here relative to their actual annual return.
+
+## Auth
+
+Implemented, not stubbed: `frontend/src/auth.ts` wraps `amazon-cognito-identity-js`
+for sign-up, email confirmation, sign-in, sign-out, and session restore on reload.
+`frontend/src/components/AuthView.tsx` is the sign-up/confirm/sign-in UI; `App.tsx`
+gates the Shifts/Pay views behind it. Needs `VITE_COGNITO_USER_POOL_ID` and
+`VITE_COGNITO_CLIENT_ID` (from the CDK stack's outputs once deployed) in `.env`.
 
 ## API surface (API Gateway HTTP API, Cognito JWT authorizer)
 
@@ -47,9 +65,10 @@ as two steps avoids silently mis-filing a shift when the message is ambiguous.
 ## Frontend
 
 Vite + React, ported from the HTML/CSS prototype (same visual language: `Fraunces` +
-`IBM Plex Sans`, teal/amber palette). Two views: **Shifts** (paste box, Today/
-Tomorrow, week strip, inline edit) and **Pay** (gross, deduction breakdown, net,
-hourly rates). Built as a static bundle and deployed to S3 + CloudFront.
+`IBM Plex Sans`, teal/amber palette). Gated behind Cognito auth (see above), then two
+views: **Shifts** (paste box, Today/Tomorrow, week strip, inline edit) and **Pay**
+(gross, deduction breakdown, net, hourly rates). Built as a static bundle and
+deployed to S3 + CloudFront.
 
 ## Infra (`infra/`, AWS CDK)
 
@@ -60,7 +79,8 @@ hourly rates). Built as a static bundle and deployed to S3 + CloudFront.
 - API Gateway HTTP API wired to the Lambdas, with a Cognito JWT authorizer
 - S3 bucket + CloudFront distribution for the frontend static build
 
-This is a skeleton: handlers have real DynamoDB read/write logic for jobs and shifts,
-but the parser and payroll calculation are stubbed with clear `TODO`s — those need
-product decisions (which parsing approach, which compliance source for tax figures)
-before they're production-ready.
+This is a skeleton with real logic, not just stubs: jobs/shifts CRUD, the paste
+parser, payroll math (with cited 2026 rates), and Cognito auth all work end to end
+and are type-checked. What's still missing before a real deploy: AWS credentials to
+actually `cdk deploy` (not available in this environment), the unverified upper BC
+tax brackets noted above, and year-to-date earnings tracking for CPP/EI annual caps.

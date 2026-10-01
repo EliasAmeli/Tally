@@ -1,11 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ShiftsView from "./components/ShiftsView";
 import PayView from "./components/PayView";
+import AuthView from "./components/AuthView";
+import * as auth from "./auth";
 
 type Tab = "shifts" | "pay";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("shifts");
+  const [authStatus, setAuthStatus] = useState<"loading" | "signedOut" | "signedIn">("loading");
+
+  useEffect(() => {
+    auth.restoreSession().then((token) => setAuthStatus(token ? "signedIn" : "signedOut"));
+  }, []);
+
+  if (authStatus === "loading") {
+    return (
+      <div className="shell">
+        <div className="header">
+          <div className="logo"><span className="mark" /><span className="word">Tally</span></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authStatus === "signedOut") {
+    return (
+      <div className="shell">
+        <div className="header">
+          <div className="logo"><span className="mark" /><span className="word">Tally</span></div>
+        </div>
+        <AuthView onAuthenticated={() => setAuthStatus("signedIn")} />
+      </div>
+    );
+  }
 
   return (
     <div className="shell">
@@ -14,6 +42,15 @@ export default function App() {
           <span className="mark" />
           <span className="word">Tally</span>
         </div>
+        <button
+          className="edit-btn"
+          onClick={() => {
+            auth.signOut();
+            setAuthStatus("signedOut");
+          }}
+        >
+          Sign out
+        </button>
       </div>
 
       {tab === "shifts" ? <ShiftsView /> : <PayView />}

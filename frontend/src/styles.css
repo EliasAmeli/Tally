@@ -27,6 +27,8 @@ h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;mar
 .paste-panel p{font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;}
 textarea{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-family:inherit;font-size:13.5px;background:#FCFBF7;color:var(--ink);}
 textarea:focus{outline:2px solid var(--teal);outline-offset:1px;}
+.text-input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13.5px;background:#FCFBF7;color:var(--ink);margin-bottom:8px;}
+.text-input:focus{outline:2px solid var(--teal);outline-offset:1px;}
 .paste-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
 .btn{font-family:inherit;font-size:13.5px;border:none;border-radius:8px;padding:9px 15px;cursor:pointer;}
 .btn-primary{background:var(--teal);color:#fff;}
